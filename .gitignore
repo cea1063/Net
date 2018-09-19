@@ -1,0 +1,8 @@
+## Ignore File & Folder ##
+
+*.log
+*.bak
+.vc
+*.tlog
+*.db
+*.ich
