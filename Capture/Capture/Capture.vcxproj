@@ -45,7 +45,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -185,6 +185,7 @@
   <ItemGroup>
     <ClInclude Include="Capture.h" />
     <ClInclude Include="CaptureDlg.h" />
+    <ClInclude Include="PictureCtrl.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ScreenImage.h" />
     <ClInclude Include="ScreenSelectionDialog.h" />
@@ -194,6 +195,7 @@
   <ItemGroup>
     <ClCompile Include="Capture.cpp" />
     <ClCompile Include="CaptureDlg.cpp" />
+    <ClCompile Include="PictureCtrl.cpp" />
     <ClCompile Include="ScreenImage.cpp" />
     <ClCompile Include="ScreenSelectionDialog.cpp" />
     <ClCompile Include="stdafx.cpp">

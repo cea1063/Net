@@ -21,9 +21,8 @@ BOOL CScreenImage::CaptureRect(const CRect& rect)
    CImage::Destroy();
    TCHAR currentDir[MAX_PATH];
    GetCurrentDirectory(MAX_PATH, currentDir);
-   CString filename;
-   filename.Format("%s\\test.bmp",currentDir);
-   TRACE("filename : %s\n", filename);
+   BMP_filename.Format("%s\\test.bmp",currentDir);
+   TRACE("filename : %s\n", BMP_filename);
    
    // create a screen and a memory device context
    HDC hDCScreen = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
@@ -49,11 +48,11 @@ BOOL CScreenImage::CaptureRect(const CRect& rect)
    ::DeleteDC(hDCMem);
    ::DeleteDC(hDCScreen);
    HPALETTE hpal = NULL;
-   saveBitmap(filename, hBitmap, hpal);
+   saveBitmap(BMP_filename, hBitmap, hpal);
    return bRet;
 }
 
-#if 1
+
 BOOL CScreenImage::saveBitmap(LPCSTR filename, HBITMAP bmp, HPALETTE pal)
 {
 	bool result = false;
@@ -110,45 +109,7 @@ BOOL CScreenImage::saveBitmap(LPCSTR filename, HBITMAP bmp, HPALETTE pal)
 
 	return result;
 }
-#else
-BOOL CScreenImage::HDCToFile(const char* FilePath, HDC Context, RECT Area, UINT BitsPerPixel)
-{
-	UINT Width = Area.right - Area.left;
-	UINT Height = Area.bottom - Area.top;
-	BITMAPINFO Info;
-	BITMAPFILEHEADER Header;
-	memset(&Info, 0, sizeof(Info));
-	memset(&Header, 0, sizeof(Header));
-	Info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-	Info.bmiHeader.biWidth = Width;
-	Info.bmiHeader.biHeight = Height;
-	Info.bmiHeader.biPlanes = 1;
-	Info.bmiHeader.biBitCount = BitsPerPixel;
-	Info.bmiHeader.biCompression = BI_RGB;
-	Info.bmiHeader.biSizeImage = Width * Height * (BitsPerPixel > 24 ? 4 : 3);
-	Header.bfType = 0x4D42;
-	Header.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-	char* Pixels = NULL;
-	HDC MemDC = CreateCompatibleDC(Context);
-	HBITMAP Section = CreateDIBSection(Context, &Info, DIB_RGB_COLORS, (void**)&Pixels, 0, 0);
-	DeleteObject(SelectObject(MemDC, Section));
-	::BitBlt(MemDC, 0, 0, Width, Height, Context, Area.left, Area.top, SRCCOPY);
 
-	DeleteDC(MemDC);
-	std::fstream hFile(FilePath, std::ios::out | std::ios::binary);
-	if (hFile.is_open())
-	{
-		hFile.write((char*)&Header, sizeof(Header));
-		hFile.write((char*)&Info.bmiHeader, sizeof(Info.bmiHeader));
-		hFile.write(Pixels, (((BitsPerPixel * Width + 31) & ~31) / 8) * Height);
-		hFile.close();
-		DeleteObject(Section);
-		return true;
-	}
-	DeleteObject(Section);
-	return false;
-}
-#endif
 
 /****************************************************************************************
  Function:   CScreenImage::CaptureScreen
