@@ -9,8 +9,10 @@ class CScreenImage : public CImage
 {
 public:
     BOOL CaptureRect(const CRect& rect) throw();
+	BOOL CaptureRectSave(const CRect& rect, CString filename) throw();
     BOOL CaptureScreen() throw();
     BOOL CaptureWindow(HWND hWnd) throw();
 	BOOL saveBitmap(LPCSTR filename, HBITMAP bmp, HPALETTE pal);
-	CString BMP_filename;
+	BOOL CheckBitmapFile(LPCSTR filename, CRect& rect);
+	BOOL CompareBitmaps(HBITMAP HBitmapLeft, HBITMAP HBitmapRight);
 };

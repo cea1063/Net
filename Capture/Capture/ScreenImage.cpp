@@ -19,11 +19,7 @@ BOOL CScreenImage::CaptureRect(const CRect& rect)
 {
    // detach and destroy the old bitmap if any attached
    CImage::Destroy();
-   TCHAR currentDir[MAX_PATH];
-   GetCurrentDirectory(MAX_PATH, currentDir);
-   BMP_filename.Format("%s\\test.bmp",currentDir);
-   TRACE("filename : %s\n", BMP_filename);
-   
+
    // create a screen and a memory device context
    HDC hDCScreen = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
    HDC hDCMem = ::CreateCompatibleDC(hDCScreen);
@@ -47,11 +43,219 @@ BOOL CScreenImage::CaptureRect(const CRect& rect)
    
    ::DeleteDC(hDCMem);
    ::DeleteDC(hDCScreen);
-   HPALETTE hpal = NULL;
-   saveBitmap(BMP_filename, hBitmap, hpal);
+
    return bRet;
 }
 
+BOOL CScreenImage::CaptureRectSave(const CRect& rect, CString filename)
+{
+	// detach and destroy the old bitmap if any attached
+	CImage::Destroy();
+
+	TRACE("filename : %s\n", filename);
+
+	// create a screen and a memory device context
+	HDC hDCScreen = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
+	HDC hDCMem = ::CreateCompatibleDC(hDCScreen);
+	// create a compatible bitmap and select it in the memory DC
+	HBITMAP hBitmap =
+		::CreateCompatibleBitmap(hDCScreen, rect.Width(), rect.Height());
+	HBITMAP bitmap = (HBITMAP)::SelectObject(hDCMem, hBitmap);
+
+	// bit-blit from screen to memory device context
+	// note: CAPTUREBLT flag is required to capture layered windows
+	DWORD dwRop = SRCCOPY | CAPTUREBLT;
+	BOOL bRet = ::BitBlt(hDCMem, 0, 0, rect.Width(), rect.Height(),
+		hDCScreen,
+		rect.left, rect.top, dwRop);
+
+	// attach bitmap handle to this object
+	Attach(hBitmap);
+
+	// restore the memory DC and perform cleanup
+	::SelectObject(hDCMem, bitmap);
+
+	::DeleteDC(hDCMem);
+	::DeleteDC(hDCScreen);
+	HPALETTE hpal = NULL;
+	saveBitmap(filename, hBitmap, hpal);
+	return bRet;
+}
+
+BOOL CScreenImage::CheckBitmapFile(LPCSTR filename, CRect& rect)
+{
+	// detach and destroy the old bitmap if any attached
+	CImage::Destroy();
+	
+	TCHAR currentDir[MAX_PATH];
+	CString newfile;
+	GetCurrentDirectory(MAX_PATH, currentDir);
+	newfile.Format("%s\\temp.bmp", currentDir);
+
+	// create a screen and a memory device context
+	HDC hDCScreen = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
+	HDC hDCMem = ::CreateCompatibleDC(hDCScreen);
+	// create a compatible bitmap and select it in the memory DC
+	HBITMAP hBitmap =
+		::CreateCompatibleBitmap(hDCScreen, rect.Width(), rect.Height());
+	HBITMAP bitmap = (HBITMAP)::SelectObject(hDCMem, hBitmap);
+
+	// bit-blit from screen to memory device context
+	// note: CAPTUREBLT flag is required to capture layered windows
+	DWORD dwRop = SRCCOPY | CAPTUREBLT;
+	BOOL bRet = ::BitBlt(hDCMem, 0, 0, rect.Width(), rect.Height(),
+		hDCScreen,
+		rect.left, rect.top, dwRop);
+	if (!bRet)
+	{
+		TRACE("File to screen capture!!!\n");
+		return bRet;
+	}
+	// attach bitmap handle to this object
+	Attach(hBitmap);
+
+	// restore the memory DC and perform cleanup
+	::SelectObject(hDCMem, bitmap);
+
+	::DeleteDC(hDCMem);
+	::DeleteDC(hDCScreen);
+	
+	//Save new file
+	HPALETTE hpal = NULL;
+	saveBitmap(newfile, hBitmap, hpal);
+
+	//Load HBITMAP with file name
+	TRACE("Old filename : %s\n", filename);
+	HBITMAP fileBMP = (HBITMAP)LoadImage(NULL, filename, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	HBITMAP newfileBMP = (HBITMAP)LoadImage(NULL, newfile, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+
+	bRet = CompareBitmaps(fileBMP, newfileBMP);
+	if (bRet)
+		TRACE("Two Bitmap is same\n");
+	else
+		TRACE("Two Bitmap is different\n");
+	return bRet;
+}
+
+BOOL CScreenImage::CompareBitmaps(HBITMAP HBitmapLeft, HBITMAP HBitmapRight)
+{
+	if (HBitmapLeft == HBitmapRight)
+	{
+		return true;
+	}
+
+	if (NULL == HBitmapLeft || NULL == HBitmapRight)
+	{
+		return false;
+	}
+
+	bool bSame = false;
+
+	HDC hdc = ::GetDC(NULL);
+	BITMAPINFO BitmapInfoLeft = { 0 };
+	BITMAPINFO BitmapInfoRight = { 0 };
+
+	BitmapInfoLeft.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	BitmapInfoRight.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+
+	if (0 != GetDIBits(hdc, HBitmapLeft, 0, 0, NULL, &BitmapInfoLeft, DIB_RGB_COLORS) &&
+		0 != GetDIBits(hdc, HBitmapRight, 0, 0, NULL, &BitmapInfoRight, DIB_RGB_COLORS))
+	{
+		// Compare the BITMAPINFOHEADERs of the two bitmaps
+
+		if (0 == memcmp(&BitmapInfoLeft.bmiHeader, &BitmapInfoRight.bmiHeader,
+			sizeof(BITMAPINFOHEADER)))
+		{
+			// The BITMAPINFOHEADERs are the same so now compare the actual bitmap bits
+
+			BYTE *pLeftBits = new BYTE[BitmapInfoLeft.bmiHeader.biSizeImage];
+			BYTE *pRightBits = new BYTE[BitmapInfoRight.bmiHeader.biSizeImage];
+			BYTE *pByteLeft = NULL;
+			BYTE *pByteRight = NULL;
+
+			PBITMAPINFO pBitmapInfoLeft = &BitmapInfoLeft;
+			PBITMAPINFO pBitmapInfoRight = &BitmapInfoRight;
+
+			// calculate the size in BYTEs of the additional
+
+			// memory needed for the bmiColor table
+
+			int AdditionalMemory = 0;
+			switch (BitmapInfoLeft.bmiHeader.biBitCount)
+			{
+			case 1:
+				AdditionalMemory = 1 * sizeof(RGBQUAD);
+				break;
+			case 4:
+				AdditionalMemory = 15 * sizeof(RGBQUAD);
+				break;
+			case 8:
+				AdditionalMemory = 255 * sizeof(RGBQUAD);
+				break;
+			case 16:
+			case 32:
+				AdditionalMemory = 2 * sizeof(RGBQUAD);
+			}
+
+			if (AdditionalMemory)
+			{
+				// we have to allocate room for the bmiColor table that will be
+
+				// attached to our BITMAPINFO variables
+
+				pByteLeft = new BYTE[sizeof(BITMAPINFO) + AdditionalMemory];
+				if (pByteLeft)
+				{
+					memset(pByteLeft, 0, sizeof(BITMAPINFO) + AdditionalMemory);
+					memcpy(pByteLeft, pBitmapInfoLeft, sizeof(BITMAPINFO));
+					pBitmapInfoLeft = (PBITMAPINFO)pByteLeft;
+				}
+
+				pByteRight = new BYTE[sizeof(BITMAPINFO) + AdditionalMemory];
+				if (pByteRight)
+				{
+					memset(pByteRight, 0, sizeof(BITMAPINFO) + AdditionalMemory);
+					memcpy(pByteRight, pBitmapInfoRight, sizeof(BITMAPINFO));
+					pBitmapInfoRight = (PBITMAPINFO)pByteRight;
+				}
+			}
+
+			if (pLeftBits && pRightBits && pBitmapInfoLeft && pBitmapInfoRight)
+			{
+				// zero out the bitmap bit buffers
+
+				memset(pLeftBits, 0, BitmapInfoLeft.bmiHeader.biSizeImage);
+				memset(pRightBits, 0, BitmapInfoRight.bmiHeader.biSizeImage);
+
+				// fill the bit buffers with the actual bitmap bits
+
+				if (0 != GetDIBits(hdc, HBitmapLeft, 0,
+					pBitmapInfoLeft->bmiHeader.biHeight, pLeftBits, pBitmapInfoLeft,
+					DIB_RGB_COLORS) && 0 != GetDIBits(hdc, HBitmapRight, 0,
+						pBitmapInfoRight->bmiHeader.biHeight, pRightBits, pBitmapInfoRight,
+						DIB_RGB_COLORS))
+				{
+					// compare the actual bitmap bits of the two bitmaps
+
+					bSame = 0 == memcmp(pLeftBits, pRightBits,
+						pBitmapInfoLeft->bmiHeader.biSizeImage);
+				}
+			}
+
+			// clean up
+
+			delete[] pLeftBits;
+			delete[] pRightBits;
+			delete[] pByteLeft;
+			delete[] pByteRight;
+		}
+	}
+
+	::ReleaseDC(NULL, hdc);
+
+	return bSame;
+}
 
 BOOL CScreenImage::saveBitmap(LPCSTR filename, HBITMAP bmp, HPALETTE pal)
 {
