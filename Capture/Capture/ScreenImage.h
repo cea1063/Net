@@ -14,5 +14,4 @@ public:
     BOOL CaptureWindow(HWND hWnd) throw();
 	BOOL saveBitmap(LPCSTR filename, HBITMAP bmp, HPALETTE pal);
 	BOOL CheckBitmapFile(LPCSTR filename, CRect& rect);
-	BOOL CompareBitmaps(HBITMAP HBitmapLeft, HBITMAP HBitmapRight);
 };

@@ -177,6 +177,7 @@ BOOL CPictureCtrl::LoadFromFile(CString &szFilePath)
 	return TRUE;
 }
 
+
 // BOOL CPictureCtrl::LoadFromResource(HMODULE hModule, LPCTSTR lpName, LPCTSTR lpType)
 // {
 // 	//Set success error state

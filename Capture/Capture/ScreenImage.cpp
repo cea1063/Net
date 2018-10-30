@@ -79,6 +79,7 @@ BOOL CScreenImage::CaptureRectSave(const CRect& rect, CString filename)
 	::DeleteDC(hDCScreen);
 	HPALETTE hpal = NULL;
 	saveBitmap(filename, hBitmap, hpal);
+
 	return bRet;
 }
 
@@ -88,17 +89,22 @@ BOOL CScreenImage::CheckBitmapFile(LPCSTR filename, CRect& rect)
 	CImage::Destroy();
 	
 	TCHAR currentDir[MAX_PATH];
+	DWORD dw = 0;
 	CString newfile;
 	GetCurrentDirectory(MAX_PATH, currentDir);
 	newfile.Format("%s\\temp.bmp", currentDir);
 
 	// create a screen and a memory device context
 	HDC hDCScreen = ::CreateDC(_T("DISPLAY"), NULL, NULL, NULL);
+	dw = GetLastError();
 	HDC hDCMem = ::CreateCompatibleDC(hDCScreen);
+	dw = GetLastError();
 	// create a compatible bitmap and select it in the memory DC
 	HBITMAP hBitmap =
 		::CreateCompatibleBitmap(hDCScreen, rect.Width(), rect.Height());
+	dw = GetLastError();
 	HBITMAP bitmap = (HBITMAP)::SelectObject(hDCMem, hBitmap);
+	dw = GetLastError();
 
 	// bit-blit from screen to memory device context
 	// note: CAPTUREBLT flag is required to capture layered windows
@@ -108,7 +114,10 @@ BOOL CScreenImage::CheckBitmapFile(LPCSTR filename, CRect& rect)
 		rect.left, rect.top, dwRop);
 	if (!bRet)
 	{
-		TRACE("File to screen capture!!!\n");
+		TRACE("Fail to screen capture!!!\n");
+		dw = GetLastError();
+		::DeleteDC(hDCMem);
+		::DeleteDC(hDCScreen);
 		return bRet;
 	}
 	// attach bitmap handle to this object
@@ -119,31 +128,17 @@ BOOL CScreenImage::CheckBitmapFile(LPCSTR filename, CRect& rect)
 
 	::DeleteDC(hDCMem);
 	::DeleteDC(hDCScreen);
-	
+		
 	//Save new file
+	
 	HPALETTE hpal = NULL;
 	saveBitmap(newfile, hBitmap, hpal);
 
+
 	//Load HBITMAP with file name
 	TRACE("Old filename : %s\n", filename);
-	HBITMAP fileBMP = (HBITMAP)LoadImage(NULL, filename, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-	HBITMAP newfileBMP = (HBITMAP)LoadImage(NULL, newfile, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-
-
-	bRet = CompareBitmaps(fileBMP, newfileBMP);
-	if (bRet)
-		TRACE("Two Bitmap is same\n");
-	else
-		TRACE("Two Bitmap is different\n");
-	return bRet;
-}
-
-BOOL CScreenImage::CompareBitmaps(HBITMAP HBitmapLeft, HBITMAP HBitmapRight)
-{
-	if (HBitmapLeft == HBitmapRight)
-	{
-		return true;
-	}
+	HBITMAP HBitmapLeft = (HBITMAP)LoadImage(NULL, filename, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	HBITMAP HBitmapRight = (HBITMAP)LoadImage(NULL, newfile, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
 	if (NULL == HBitmapLeft || NULL == HBitmapRight)
 	{
@@ -254,6 +249,11 @@ BOOL CScreenImage::CompareBitmaps(HBITMAP HBitmapLeft, HBITMAP HBitmapRight)
 
 	::ReleaseDC(NULL, hdc);
 
+	DeleteObject(HBitmapLeft);
+	DeleteObject(hBitmap);
+	DeleteObject(HBitmapRight);
+	DeleteObject(bitmap);
+	DeleteObject(hpal);
 	return bSame;
 }
 
